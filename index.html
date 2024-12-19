@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Egyptian Pyamid Landscape</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xF5DEB3); 
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const sphereGeometry = new THREE.SphereGeometry(100, 64, 64);
+        const textureLoader = new THREE.TextureLoader();
+        const sandTexture = textureLoader.load('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/textures/sand.jpg');
+        const sphereMaterial = new THREE.MeshStandardMaterial({ 
+            map: sandTexture,
+            color: 0xD2B48C
+        });
+        const worldSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        scene.add(worldSphere);
+
+        function createPyramid() {
+            const pyramidGroup = new THREE.Group();
+            
+            const baseGeometry = new THREE.BoxGeometry(40, 5, 40);
+            const baseMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xC19A6B, 
+                roughness: 0.7
+            });
+            const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+            pyramidGroup.add(baseMesh);
+
+            const sideHeight = 30;
+            const sideGeometry = new THREE.BufferGeometry();
+            
+            const vertices = new Float32Array([
+                -20, 0, -20,   
+                20, 0, -20,    
+                0, sideHeight, 0  
+            ]);
+
+            sideGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            sideGeometry.computeVertexNormals();
+
+            const sideMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xC19A6B, 
+                roughness: 0.6,
+                side: THREE.DoubleSide
+            });
+
+            [0, Math.PI/2, Math.PI, 3*Math.PI/2].forEach(angle => {
+                const sideMesh = new THREE.Mesh(sideGeometry, sideMaterial);
+                sideMesh.rotation.y = angle;
+                pyramidGroup.add(sideMesh);
+            });
+
+            pyramidGroup.position.set(0, 2.5, 0);
+            return pyramidGroup;
+        }
+
+        const pyramid = createPyramid();
+        scene.add(pyramid);
+
+        const moveSpeed = 0.5;
+        const keys = {};
+        let mouseDown = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+
+        camera.position.set(0, 0, 50);
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            previousMouseX = e.clientX;
+            previousMouseY = e.clientY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const deltaX = e.clientX - previousMouseX;
+                const deltaY = e.clientY - previousMouseY;
+
+                camera.rotation.y -= deltaX * 0.01;
+                
+                camera.rotation.x -= deltaY * 0.01;
+                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+
+                previousMouseX = e.clientX;
+                previousMouseY = e.clientY;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const moveDirection = new THREE.Vector3();
+            
+            if (keys['w']) moveDirection.z -= moveSpeed;
+            if (keys['s']) moveDirection.z += moveSpeed;
+            if (keys['a']) moveDirection.x -= moveSpeed;
+            if (keys['d']) moveDirection.x += moveSpeed;
+
+            moveDirection.applyQuaternion(camera.quaternion);
+            camera.position.add(moveDirection);
+
+            const distanceFromCenter = camera.position.length();
+            if (distanceFromCenter > 50) {
+                camera.position.normalize().multiplyScalar(50);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
